@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from "react";
 import pogen1 from "./images/pogen1.png";
 import pogen2 from "./images/pogen2.png";
 import logoImg from "./images/logoImg.jpeg";
+import convert from "./images/convert.jpeg";
+import gallery from "./images/gallery.jpeg";
 
 function nowStr() {
   const d = new Date();
@@ -372,9 +374,25 @@ export default function App() {
               ))}
             </div>
             <div className="camera-controls">
-              <span className="icon-btn">🖼</span>
+              <span className="icon-btn">
+                <img 
+                  src={galleryImg} 
+                  alt="갤러리" 
+                  width="24" 
+                  height="24" 
+                  style={{ objectFit: 'contain', display: 'block' }} 
+                />
+              </span>
               <button className="shutter" onClick={handleShutter} />
-              <span className="icon-btn">🔄</span>
+              <span className="icon-btn">
+                <img 
+                  src={convertImg} 
+                  alt="화면 전환" 
+                  width="24" 
+                  height="24" 
+                  style={{ objectFit: 'contain', display: 'block' }} 
+                />
+              </span>
             </div>
           </div>
         </div>
