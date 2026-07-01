@@ -351,8 +351,10 @@ export default function App() {
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleSend();
-              }}
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                handleSend();
+              }
+            }}
             />
           </div>
           <button className="send-btn" onClick={handleSend} aria-label="보내기">
