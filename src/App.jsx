@@ -376,20 +376,20 @@ export default function App() {
             <div className="camera-controls">
               <span className="icon-btn">
                 <img 
-                  src={galleryImg} 
+                  src={gallery} 
                   alt="갤러리" 
-                  width="24" 
-                  height="24" 
+                  width="45" 
+                  height="45" 
                   style={{ objectFit: 'contain', display: 'block' }} 
                 />
               </span>
               <button className="shutter" onClick={handleShutter} />
               <span className="icon-btn">
                 <img 
-                  src={convertImg} 
+                  src={convert} 
                   alt="화면 전환" 
-                  width="24" 
-                  height="24" 
+                  width="55" 
+                  height="55" 
                   style={{ objectFit: 'contain', display: 'block' }} 
                 />
               </span>
