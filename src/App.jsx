@@ -120,11 +120,15 @@ function MissionCard({ stage, lighter, onAccept, onLighter, onVerify }) {
   return null;
 }
 
-const REPLIES = [
+// Gemini 응답이 실패했을 때만 사용하는 예비 답변
+const FALLBACK_REPLIES = [
   "천천히 얘기해줘, 듣고 있어.",
   "그럴 수 있어. 무리하지 않아도 돼.",
   "오늘은 그것만으로도 충분해.",
 ];
+
+// 백엔드(Express + Gemini) 서버 주소. .env에 VITE_API_URL로 오버라이드 가능.
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8787";
 
 export default function App() {
   const [messages, setMessages] = useState([]);
@@ -138,7 +142,11 @@ export default function App() {
   const idRef = useRef(0);
   const missionsDoneRef = useRef(0);
   const levelRef = useRef(1);
+  const messagesRef = useRef([]);
 
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   useEffect(() => {
     missionsDoneRef.current = missionsDone;
   }, [missionsDone]);
@@ -232,12 +240,30 @@ export default function App() {
     }, 350);
   };
 
-  const handleSend = () => {
+  // 3. 더미 REPLIES 랜덤 응답 대신, 실제 백엔드(Express + Gemini)를 호출하도록 수정했습니다.
+  const handleSend = async () => {
     const text = textInput.trim();
     if (!text) return;
     addUser(text);
     setTextInput("");
-    setTimeout(() => addBot(REPLIES[Math.floor(Math.random() * REPLIES.length)]), 500);
+
+    const history = messagesRef.current
+      .filter((m) => m.kind === "bot" || m.kind === "user")
+      .map((m) => ({ role: m.kind, text: m.text }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, history }),
+      });
+      if (!res.ok) throw new Error("chat request failed");
+      const data = await res.json();
+      addBot(data.reply || FALLBACK_REPLIES[0]);
+    } catch (err) {
+      console.error("Gemini 응답 실패:", err);
+      addBot(FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)]);
+    }
   };
 
   const handleChipCount = () => {
