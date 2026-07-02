@@ -16,12 +16,10 @@ function nowStr() {
 }
 
 // 2. SVG 대신 가져온 이미지 변수(pogen1)를 사용하도록 수정했습니다.
-// 레벨업(LEVEL 2 이상)하면 아기 포근이(pogen1) 대신 어른 포근이(pogen2)로 바뀐다.
-function Mascot({ level }) {
-  const src = level >= 2 ? pogen2 : pogen1;
+function Mascot() {
   return (
     <img 
-      src={src} 
+      src={pogen1} 
       alt="마스코트" 
       width="112"
       height="112" 
@@ -133,21 +131,6 @@ const FALLBACK_REPLIES = [
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8787";
 
-// ── 시연용 데모 모드 ──────────────────────────────────────────
-// true면 백엔드(Gemini)를 아예 호출하지 않고, 아래 DEMO_SCRIPT 순서대로
-// 고정된 포근이 대사를 보여준다. 실제 서비스로 되돌릴 땐 false로만 바꾸면 됨.
-const DEMO_MODE = true;
-
-// 사용자가 메시지를 보낼 때마다 순서대로 하나씩 소비되는 고정 대본.
-// showQuest: true인 스텝에서는 대사와 함께 미션 카드도 같이 띄운다.
-const DEMO_SCRIPT = [
-  { reply: "그런 날도 있지. 오늘 좀 답답하거나 힘든 일이 있었어?" },
-  { reply: "무리하지 않아도 돼. 대신 아주 작은 것 하나만 해볼래?", showQuest: true },
-];
-
-// AI가 "생각하는" 느낌을 주기 위한 최소 지연 시간(ms)
-const DEMO_REPLY_DELAY = 1000;
-
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [level, setLevel] = useState(1);
@@ -161,7 +144,6 @@ export default function App() {
   const missionsDoneRef = useRef(0);
   const levelRef = useRef(1);
   const messagesRef = useRef([]);
-  const demoStepRef = useRef(0);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -194,9 +176,6 @@ export default function App() {
     pushMessage({ kind: "mission", stage, lighter: false, quest });
   };
 
-  // 새 퀘스트가 왔을 때: 이미 '진행 중'인 미션이 있으면 건드리지 않고,
-  // '제안됨(아직 시작 안 함)' 상태 카드가 있으면 그 카드를 새 퀘스트로 교체한다.
-  // 둘 다 없으면(또는 완료/인증중 상태만 있으면) 새 카드를 추가한다.
   const presentQuest = (quest) => {
     setMessages((prev) => {
       for (let i = prev.length - 1; i >= 0; i -= 1) {
@@ -229,6 +208,9 @@ export default function App() {
     });
   };
 
+  // 처음 접속했을 때 포근이의 인사말만 보여준다.
+  // (예전엔 "사람 연락도 싫고 답답해."를 자동으로 대신 입력해줬는데,
+  //  이제는 사용자가 직접 자기 이야기를 입력하도록 자동 입력을 없앴다.)
   useEffect(() => {
     const t1 = setTimeout(() => addBot("안녕, 나는 포근이야! 오늘 기분이 어때?", true), 300);
     return () => {
@@ -283,25 +265,6 @@ export default function App() {
     addUser(text);
     setTextInput("");
 
-    if (DEMO_MODE) {
-      const step = DEMO_SCRIPT[demoStepRef.current];
-      demoStepRef.current += 1;
-
-      // 실제 API를 기다리는 것처럼 보이도록 일부러 약간의 딜레이를 준다.
-      setTimeout(() => {
-        if (step) {
-          addBot(step.reply);
-          if (step.showQuest) {
-            presentQuest(DEFAULT_QUEST);
-          }
-        } else {
-          // 대본을 다 소진한 뒤에는 자연스러운 예비 답변으로 대응한다.
-          addBot(FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)]);
-        }
-      }, DEMO_REPLY_DELAY);
-      return;
-    }
-
     const history = messagesRef.current
       .filter((m) => m.kind === "bot" || m.kind === "user")
       .map((m) => ({ role: m.kind, text: m.text }));
@@ -340,8 +303,6 @@ export default function App() {
       }
     } catch (err) {
       console.error("Gemini 응답 실패:", err);
-      // 백엔드가 구체적인 이유를 알려준 경우(예: Gemini 과부하) 그 문구를 그대로 보여주고,
-      // 그게 아니면(네트워크 자체가 끊긴 경우 등) 예비 답변으로 대체한다.
       if (err.message && err.message !== "chat request failed") {
         addBot(err.message);
         return;
@@ -374,8 +335,8 @@ export default function App() {
             style={{ objectFit: 'contain', display: 'block' }} 
           />          
           <div className="character-row">
-            <Mascot level={level} />
-            <div className="character-name">{level >= 2 ? "어른 포근이" : "아기 포근이"}</div>
+            <Mascot />
+            <div className="character-name">아기 포근이</div>
             <div className="level-badge">LEVEL {level}</div>
           </div>
           <div className="divider" />
