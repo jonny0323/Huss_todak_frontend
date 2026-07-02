@@ -16,10 +16,12 @@ function nowStr() {
 }
 
 // 2. SVG 대신 가져온 이미지 변수(pogen1)를 사용하도록 수정했습니다.
-function Mascot() {
+// 레벨업(LEVEL 2 이상)하면 아기 포근이(pogen1) 대신 어른 포근이(pogen2)로 바뀐다.
+function Mascot({ level }) {
+  const src = level >= 2 ? pogen2 : pogen1;
   return (
     <img 
-      src={pogen1} 
+      src={src} 
       alt="마스코트" 
       width="112"
       height="112" 
@@ -28,8 +30,16 @@ function Mascot() {
   );
 }
 
-function MissionCard({ stage, lighter, onAccept, onLighter, onVerify }) {
+const DEFAULT_QUEST = {
+  title: "해야 할 일 하나만 메모에 적기",
+  description: "머릿속 걱정을 메모 밖으로 꺼내면 다음 행동 문턱이 낮아져요.",
+  xp: 10,
+};
+
+function MissionCard({ stage, lighter, quest, onAccept, onLighter, onVerify }) {
   const [fillWidth, setFillWidth] = useState(0);
+  const q = quest || DEFAULT_QUEST;
+  const xpLabel = q.xp ? ` (+${q.xp} xp)` : "";
 
   useEffect(() => {
     if (stage === "verifying") {
@@ -43,11 +53,11 @@ function MissionCard({ stage, lighter, onAccept, onLighter, onVerify }) {
     return (
       <div className="mission-card">
         <div className="mission-tag suggest">토닥 미션</div>
-        <div className="mission-title">해야 할 일 하나만 메모에 적기</div>
+        <div className="mission-title">{q.title}</div>
         <div className="mission-desc">
           {lighter
             ? "오늘 있었던 일 한 줄만 떠올려봐도 충분해요."
-            : "머릿속 걱정을 메모 밖으로 꺼내면 다음 행동 문턱이 낮아져요."}
+            : q.description || DEFAULT_QUEST.description}
         </div>
         <div className="mission-buttons">
           <button className="pill-btn" onClick={onAccept}>
@@ -67,12 +77,10 @@ function MissionCard({ stage, lighter, onAccept, onLighter, onVerify }) {
     return (
       <div className="mission-card">
         <div className="mission-tag progress">미션 중</div>
-        <div className="mission-title">해야 할 일 하나만 메모에 적기</div>
-        <div className="mission-desc">
-          머릿속 걱정을 메모 밖으로 꺼내면 다음 행동 문턱이 낮아져요.
-        </div>
+        <div className="mission-title">{q.title}</div>
+        <div className="mission-desc">{q.description || DEFAULT_QUEST.description}</div>
         <button className="verify-btn" onClick={onVerify}>
-          미션 인증하기
+          미션 인증하기{xpLabel}
         </button>
       </div>
     );
@@ -82,10 +90,8 @@ function MissionCard({ stage, lighter, onAccept, onLighter, onVerify }) {
     return (
       <div className="mission-card">
         <div className="mission-tag progress">미션 중</div>
-        <div className="mission-title">해야 할 일 하나만 메모에 적기</div>
-        <div className="mission-desc">
-          머릿속 걱정을 메모 밖으로 꺼내면 다음 행동 문턱이 낮아져요.
-        </div>
+        <div className="mission-title">{q.title}</div>
+        <div className="mission-desc">{q.description || DEFAULT_QUEST.description}</div>
         <div className="progress-row">
           <div className="progress-track">
             <div className="progress-fill" style={{ width: fillWidth + "%" }} />
@@ -101,11 +107,9 @@ function MissionCard({ stage, lighter, onAccept, onLighter, onVerify }) {
       <div className="mission-card">
         <div className="done-wrap">
           <div>
-            <div className="mission-tag done">미션 완료</div>
-            <div className="mission-title">해야 할 일 하나만 메모에 적기</div>
-            <div className="mission-desc">
-              머릿속 걱정을 메모 밖으로 꺼내면 다음 행동 문턱이 낮아져요.
-            </div>
+            <div className="mission-tag done">미션 완료{xpLabel}</div>
+            <div className="mission-title">{q.title}</div>
+            <div className="mission-desc">{q.description || DEFAULT_QUEST.description}</div>
           </div>
           <div className="stamp stamp-blue">
             미션
@@ -127,8 +131,22 @@ const FALLBACK_REPLIES = [
   "오늘은 그것만으로도 충분해.",
 ];
 
-// 백엔드(Express + Gemini) 서버 주소. .env에 VITE_API_URL로 오버라이드 가능.
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8787";
+
+// ── 시연용 데모 모드 ──────────────────────────────────────────
+// true면 백엔드(Gemini)를 아예 호출하지 않고, 아래 DEMO_SCRIPT 순서대로
+// 고정된 포근이 대사를 보여준다. 실제 서비스로 되돌릴 땐 false로만 바꾸면 됨.
+const DEMO_MODE = true;
+
+// 사용자가 메시지를 보낼 때마다 순서대로 하나씩 소비되는 고정 대본.
+// showQuest: true인 스텝에서는 대사와 함께 미션 카드도 같이 띄운다.
+const DEMO_SCRIPT = [
+  { reply: "그런 날도 있지. 오늘 좀 답답하거나 힘든 일이 있었어?" },
+  { reply: "무리하지 않아도 돼. 대신 아주 작은 것 하나만 해볼래?", showQuest: true },
+];
+
+// AI가 "생각하는" 느낌을 주기 위한 최소 지연 시간(ms)
+const DEMO_REPLY_DELAY = 1000;
 
 export default function App() {
   const [messages, setMessages] = useState([]);
@@ -143,6 +161,7 @@ export default function App() {
   const missionsDoneRef = useRef(0);
   const levelRef = useRef(1);
   const messagesRef = useRef([]);
+  const demoStepRef = useRef(0);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -171,8 +190,30 @@ export default function App() {
     pushMessage({ kind: "user", text, time: nowStr() });
   };
 
-  const addMissionCard = (stage) => {
-    pushMessage({ kind: "mission", stage, lighter: false });
+  const addMissionCard = (stage, quest = DEFAULT_QUEST) => {
+    pushMessage({ kind: "mission", stage, lighter: false, quest });
+  };
+
+  // 새 퀘스트가 왔을 때: 이미 '진행 중'인 미션이 있으면 건드리지 않고,
+  // '제안됨(아직 시작 안 함)' 상태 카드가 있으면 그 카드를 새 퀘스트로 교체한다.
+  // 둘 다 없으면(또는 완료/인증중 상태만 있으면) 새 카드를 추가한다.
+  const presentQuest = (quest) => {
+    setMessages((prev) => {
+      for (let i = prev.length - 1; i >= 0; i -= 1) {
+        if (prev[i].kind === "mission") {
+          if (prev[i].stage === "inprogress") {
+            return prev;
+          }
+          if (prev[i].stage === "suggest") {
+            const copy = [...prev];
+            copy[i] = { ...copy[i], quest, lighter: false };
+            return copy;
+          }
+          break;
+        }
+      }
+      return [...prev, { id: nextId(), kind: "mission", stage: "suggest", lighter: false, quest }];
+    });
   };
 
   const updateLastMission = (patch) => {
@@ -190,12 +231,8 @@ export default function App() {
 
   useEffect(() => {
     const t1 = setTimeout(() => addBot("안녕, 나는 포근이야! 오늘 기분이 어때?", true), 300);
-    const t2 = setTimeout(() => addUser("사람 연락도 싫고 답답해."), 900);
-    const t23 = setTimeout(() => addMissionCard("suggest"), 1500);
     return () => {
       clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t23);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -240,12 +277,30 @@ export default function App() {
     }, 350);
   };
 
-  // 3. 더미 REPLIES 랜덤 응답 대신, 실제 백엔드(Express + Gemini)를 호출하도록 수정했습니다.
   const handleSend = async () => {
     const text = textInput.trim();
     if (!text) return;
     addUser(text);
     setTextInput("");
+
+    if (DEMO_MODE) {
+      const step = DEMO_SCRIPT[demoStepRef.current];
+      demoStepRef.current += 1;
+
+      // 실제 API를 기다리는 것처럼 보이도록 일부러 약간의 딜레이를 준다.
+      setTimeout(() => {
+        if (step) {
+          addBot(step.reply);
+          if (step.showQuest) {
+            presentQuest(DEFAULT_QUEST);
+          }
+        } else {
+          // 대본을 다 소진한 뒤에는 자연스러운 예비 답변으로 대응한다.
+          addBot(FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)]);
+        }
+      }, DEMO_REPLY_DELAY);
+      return;
+    }
 
     const history = messagesRef.current
       .filter((m) => m.kind === "bot" || m.kind === "user")
@@ -257,11 +312,40 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, history }),
       });
-      if (!res.ok) throw new Error("chat request failed");
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.error || "chat request failed");
+      }
+
       const data = await res.json();
       addBot(data.reply || FALLBACK_REPLIES[0]);
+
+      // 새 퀘스트가 왔으면 카드에 반영한다 (진행 중인 미션은 건드리지 않고,
+      // 제안만 되어있던 카드는 새 퀘스트로 교체한다).
+      if (data.quest && data.quest.title) {
+        presentQuest({
+          title: data.quest.title,
+          description: data.quest.description,
+          xp: data.quest.xp,
+        });
+      }
+
+      // 위기 신호가 감지되면, 모델이 즉흥적으로 만든 문구 대신 고정된 안내문을 보여준다.
+      if (data.crisis) {
+        addBot(data.crisisNotice || FALLBACK_REPLIES[0]);
+        showToast("상담사에게 알림이 전달되었어요");
+        // TODO: 실제 서비스에서는 여기서 상담사 알림(이메일/슬랙/대시보드 등) API를 호출해야 한다.
+        console.warn("[위기 알림] level:", data.crisis.level);
+      }
     } catch (err) {
       console.error("Gemini 응답 실패:", err);
+      // 백엔드가 구체적인 이유를 알려준 경우(예: Gemini 과부하) 그 문구를 그대로 보여주고,
+      // 그게 아니면(네트워크 자체가 끊긴 경우 등) 예비 답변으로 대체한다.
+      if (err.message && err.message !== "chat request failed") {
+        addBot(err.message);
+        return;
+      }
       addBot(FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)]);
     }
   };
@@ -290,8 +374,8 @@ export default function App() {
             style={{ objectFit: 'contain', display: 'block' }} 
           />          
           <div className="character-row">
-            <Mascot />
-            <div className="character-name">아기 포근이</div>
+            <Mascot level={level} />
+            <div className="character-name">{level >= 2 ? "어른 포근이" : "아기 포근이"}</div>
             <div className="level-badge">LEVEL {level}</div>
           </div>
           <div className="divider" />
@@ -324,6 +408,7 @@ export default function App() {
                   key={msg.id}
                   stage={msg.stage}
                   lighter={msg.lighter}
+                  quest={msg.quest}
                   onAccept={handleAccept}
                   onLighter={handleLighter}
                   onVerify={handleVerifyClick}
@@ -351,10 +436,10 @@ export default function App() {
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                handleSend();
-              }
-            }}
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  handleSend();
+                }
+              }}
             />
           </div>
           <button className="send-btn" onClick={handleSend} aria-label="보내기">
