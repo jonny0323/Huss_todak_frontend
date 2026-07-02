@@ -129,7 +129,7 @@ const FALLBACK_REPLIES = [
   "오늘은 그것만으로도 충분해.",
 ];
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8787";
+const API_BASE =  "http://168.107.56.230:8787";
 
 export default function App() {
   const [messages, setMessages] = useState([]);
